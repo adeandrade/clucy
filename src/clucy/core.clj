@@ -2,7 +2,7 @@
   (:import (java.io StringReader File)
            (org.apache.lucene.analysis.standard StandardAnalyzer)
            (org.apache.lucene.document Document Field Field$Index Field$Store)
-           (org.apache.lucene.index IndexWriter IndexWriter$MaxFieldLength Term)
+           (org.apache.lucene.index IndexWriter IndexWriter$MaxFieldLength Term IndexNotFoundException)
            (org.apache.lucene.queryParser QueryParser)
            (org.apache.lucene.search BooleanClause BooleanClause$Occur
                                      BooleanQuery IndexSearcher TermQuery)
@@ -163,22 +163,26 @@ fragments."
   [index query max-results & {:keys [highlight default-field default-operator]}]
   (if (every? false? [default-field *content*])
     (throw (Exception. "No default search field specified"))
-    (let [default-field (or default-field :_content)]
-      (with-open [searcher (IndexSearcher. index)]
-        (let [parser (doto (QueryParser. *version* (as-str default-field) *analyzer*)
-                       (.setDefaultOperator (case (or default-operator :or)
-                                                  :and QueryParser/AND_OPERATOR
-                                                  :or  QueryParser/OR_OPERATOR)))
-              query  (.parse parser query)
-              hits   (.search searcher query max-results)
-              highlighter (make-highlighter query searcher highlight)]
-          (doall
-           (with-meta (for [hit (.scoreDocs hits)]
-                        (document->map (.doc searcher (.doc hit))
-                                       (.score hit)
-                                       highlighter))
-             {:_total-hits (.totalHits hits)
-              :_max-score (.getMaxScore hits)})))))))
+    (let [default-field (or default-field :_content)
+          searcher (try (IndexSearcher. index)
+                        (catch IndexNotFoundException _ nil))]
+      (if searcher
+        (with-open [searcher searcher]
+          (let [parser (doto (QueryParser. *version* (as-str default-field) *analyzer*)
+                         (.setDefaultOperator (case (or default-operator :or)
+                                                :and QueryParser/AND_OPERATOR
+                                                :or  QueryParser/OR_OPERATOR)))
+                query (.parse parser query)
+                hits (.search searcher query max-results)
+                highlighter (make-highlighter query searcher highlight)]
+            (doall
+             (with-meta (for [hit (.scoreDocs hits)]
+                          (document->map (.doc searcher (.doc hit))
+                                         (.score hit)
+                                         highlighter))
+               {:_total-hits (.totalHits hits)
+                :_max-score (.getMaxScore hits)}))))
+        (list)))))
 
 (defn search-and-delete
   "Search the supplied index with a query string and then delete all

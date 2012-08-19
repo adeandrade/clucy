@@ -59,4 +59,9 @@
       (is (true? (every? pos? (map (comp :_score meta) results))))
       (is (= 2 (:_total-hits (meta results))))
       (is (pos? (:_max-score (meta results))))
-      (is (= (count people) (:_total-hits (meta (search index "*:*" 2))))))))
+      (is (= (count people) (:_total-hits (meta (search index "*:*" 2)))))))
+
+  (testing "search fn with empty index"
+    (let [index (memory-index)
+          results (search index "name:miles" 10)]
+      (is (empty? results)))))

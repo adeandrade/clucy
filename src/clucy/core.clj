@@ -9,7 +9,8 @@
            (org.apache.lucene.search.highlight Highlighter QueryScorer
                                                SimpleHTMLFormatter)
            (org.apache.lucene.store NIOFSDirectory RAMDirectory)
-           (org.apache.lucene.util Version)))
+           (org.apache.lucene.util Version))
+  (:require [clojure.string :as str]))
 
 (def ^{:dynamic true} *version* Version/LUCENE_CURRENT)
 (def ^{:dynamic true} *analyzer* (StandardAnalyzer. *version*))
@@ -79,7 +80,7 @@
 (defn- concat-values
   "Concatenate all the maps values being indexed into a single string."
   [map-in]
-  (apply str (interpose " " (vals (indexed-fields map-in)))))
+  (str/join " " (flatten (vals (indexed-fields map-in)))))
 
 (defn- map->document
   "Create a Document from a map."

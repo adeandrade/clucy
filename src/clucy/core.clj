@@ -64,22 +64,22 @@
                        [false true] Field$Index/ANALYZED_NO_NORMS
                        [true true] Field$Index/NOT_ANALYZED_NO_NORMS))))))
 
-(defn- map-stored
+(defn- indexed-fields
   "Returns a hash-map containing all of the values in the map that
-  will be stored in the search index."
+  will be indexed  in the search index."
   [map-in]
   (merge {}
          (filter (complement nil?)
                  (map (fn [item]
                         (if (or (= nil (meta map-in))
                                 (not= false
-                                      (:stored ((first item) (meta map-in)))))
+                                      (:indexed ((first item) (meta map-in)))))
                           item)) map-in))))
 
 (defn- concat-values
-  "Concatenate all the maps values being stored into a single string."
+  "Concatenate all the maps values being indexed into a single string."
   [map-in]
-  (apply str (interpose " " (vals (map-stored map-in)))))
+  (apply str (interpose " " (vals (indexed-fields map-in)))))
 
 (defn- map->document
   "Create a Document from a map."

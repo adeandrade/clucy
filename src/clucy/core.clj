@@ -5,7 +5,7 @@
            (org.apache.lucene.index IndexWriter IndexWriter$MaxFieldLength Term IndexNotFoundException)
            (org.apache.lucene.queryParser QueryParser)
            (org.apache.lucene.search BooleanClause BooleanClause$Occur
-                                     BooleanQuery IndexSearcher TermQuery)
+                                     BooleanQuery IndexSearcher TermQuery ScoreDoc)
            (org.apache.lucene.search.highlight Highlighter QueryScorer
                                                SimpleHTMLFormatter)
            (org.apache.lucene.store NIOFSDirectory RAMDirectory)
@@ -160,7 +160,7 @@ fragments."
 
 (defn search
   "Search the supplied index with a query string."
-  [index query max-results & {:keys [highlight default-field default-operator]}]
+  [index query max-results & {:keys [highlight default-field default-operator limit page] :or {limit max-results page 0}}]
   (if (every? false? [default-field *content*])
     (throw (Exception. "No default search field specified"))
     (let [default-field (or default-field :_content)
@@ -174,12 +174,20 @@ fragments."
                                                 :or  QueryParser/OR_OPERATOR)))
                 query (.parse parser query)
                 hits (.search searcher query max-results)
-                highlighter (make-highlighter query searcher highlight)]
+                highlighter (make-highlighter query searcher highlight)
+                positions (let [total (min max-results (.totalHits hits))
+                                start (* page limit)
+                                end (+ start limit)]
+                            (condp > total
+                              start ()
+                              end (range start total)
+                              (range start end)))]
             (doall
-             (with-meta (for [hit (.scoreDocs hits)]
-                          (document->map (.doc searcher (.doc hit))
-                                         (.score hit)
-                                         highlighter))
+             (with-meta (let [docs (.scoreDocs hits)]
+                          (for [hit (map #(aget ^ScoreDoc docs %) positions)]
+                            (document->map (.doc searcher (.doc hit))
+                                           (.score hit)
+                                           highlighter)))
                {:_total-hits (.totalHits hits)
                 :_max-score (.getMaxScore hits)}))))
         (list)))))

@@ -64,4 +64,12 @@
   (testing "search fn with empty index"
     (let [index (memory-index)
           results (search index "name:miles" 10)]
-      (is (empty? results)))))
+      (is (empty? results))))
+
+  (testing "search fn with pagination"
+    (let [index (memory-index)]
+      (doseq [person people] (add index person))
+      (is (= 1 (count (search index "age:34" 10 :limit 1))))
+      (is (= 0 (count (search index "age:34" 1 :limit 10 :page 1))))
+      (is (= 1 (count (search index "age:34" 10 :limit 1 :page 1))))
+      (is (= 0 (count (search index "age:34" 10 :limit 2 :page 1)))))))

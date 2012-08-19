@@ -88,7 +88,7 @@
     (doseq [[key value] map]
       (add-field document key value (key (meta map))))
     (if *content*
-      (add-field document :_content (concat-values map)))
+      (add-field document :_content (concat-values map) (:_content (meta map))))
     document))
 
 (defn add
